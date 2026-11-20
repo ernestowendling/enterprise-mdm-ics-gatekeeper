@@ -1,0 +1,71 @@
+# Pack B: Travel retail GS1/GDSN product master data and dangerous goods gate.
+# Thresholds are policy settings owned by Master Data Governance and the DG-qualified
+# function; legal classification remains with that function.
+
+pack: travel_retail_gdsn
+policy_version: "2026.11"
+
+gtin:
+  allowed_unit_indicators: ["0"]
+  allowed_case_indicators: ["1", "2", "3", "4", "5", "6", "7", "8"]
+
+dangerous_goods:
+  # Screening threshold mirroring the aqueous-alcohol exemption; at or below it an
+  # alcohol-based formulation is treated as outside Class 3 screening scope.
+  alcohol_screening_threshold_pct_abv: 24.0
+  flammable_liquid_max_flashpoint_c: 60.0
+  packing_group_ii_below_flashpoint_c: 23.0
+  expected_class: "3"
+  expected_un_number_by_category:
+    FRAGRANCE: UN1266            # Perfumery products with flammable solvents
+  required_regulations: [IATA, IMDG]
+
+packaging:
+  case_weight_tolerance_pct: 2.0     # case may not weigh less than its contents minus this
+  case_overhead_max_pct: 35.0        # carton and dunnage above contents before a warning
+  pallet_tare_kg: 25.0               # EUR pallet 1200 x 800 mm
+  pallet_weight_tolerance_pct: 5.0
+  case_min_fill_ratio: 0.55
+  max_pallet_height_mm: 1600
+
+customs:
+  hs_heading_by_category:
+    FRAGRANCE: "3303"
+    SKINCARE: "3304"
+    MAKEUP: "3304"
+    HAIRCARE: "3305"
+
+market_eligibility:
+  sold_to_accounts:
+    ST-1001: { status: ACTIVE }
+    ST-2002: { status: ACTIVE }
+    ST-3003: { status: ACTIVE }
+    ST-4409: { status: BLOCKED, reason: "compliance hold pending KYC refresh" }
+    ST-5120:
+      status: RESTRICTED
+      restricted_categories: [FRAGRANCE]
+      reason: "no dangerous goods handling approval at receiving warehouse"
+  ship_to_locations:
+    ZRH-T1-AS01: { sold_to: ST-1001, country: CH, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    GVA-T1-AS01: { sold_to: ST-1001, country: CH, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    ARN-T5-AS02: { sold_to: ST-2002, country: SE, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    INF-NORD-01: { sold_to: ST-2002, country: SE, channel: INFLIGHT, accepts_dangerous_goods: false }
+    RIX-T1-AS01: { sold_to: ST-3003, country: LV, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    TLL-T1-AS01: { sold_to: ST-3003, country: EE, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    VNO-T1-AS01: { sold_to: ST-5120, country: LT, channel: AIRSIDE_DUTY_FREE, accepts_dangerous_goods: true }
+    OSL-T2-AS01: { sold_to: ST-4409, country: "NO", channel: ARRIVALS_DUTY_FREE, accepts_dangerous_goods: true }
+
+four_eyes:
+  submitter_role: MDM_DATA_STEWARD
+  approver_role: MDM_RELEASE_APPROVER
+  roles_incompatible_with_approval: [MDM_DATA_STEWARD]
+  min_justification_length: 20
+  demo_maker: S11003
+  demo_checker: S22014
+
+access_directory:
+  S11003: [MDM_DATA_STEWARD]
+  S11047: [MDM_DATA_STEWARD]
+  S22014: [MDM_RELEASE_APPROVER]
+  S22031: [MDM_RELEASE_APPROVER, MDM_DATA_STEWARD]
+  S90002: [DG_SPECIALIST]

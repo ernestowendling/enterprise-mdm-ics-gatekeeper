@@ -1,0 +1,85 @@
+# Pack A: Finance sub-ledger-to-GL pre-close controls (ICS/SOX, BCBS 239).
+# Policy is configuration; enforcement is code. Any change to this file changes the
+# config_sha256 recorded with every run and therefore shows up in the evidence pack.
+
+pack: finance_preclose_ics
+policy_version: "2026.11"
+group_currency: EUR
+
+fiscal_period:
+  id: "2026-11"
+  start: "2026-11-01"
+  end: "2026-11-30"
+
+companies:
+  CH10: { name: "Group Services Zurich", local_currency: CHF }
+  SE10: { name: "Nordic Operations Stockholm", local_currency: SEK }
+  LV10: { name: "Baltic Engineering Hub Riga", local_currency: EUR }
+
+tolerances:
+  journal_balance_txn: 0.005     # transaction currency, per journal
+  trial_balance_group: 0.05      # group currency, per company code
+  reconciliation_group: 0.05     # group currency, per reconciliation account
+  intercompany_group: 25.00      # group currency, per entity pair
+  fx_translation_group: 0.01     # group currency, per line
+
+fx:
+  rate_type: M                   # average/daily rate type of the approved rate table
+  max_rate_age_days: 3
+  deviation_warning_pct: 0.5
+  deviation_blocker_pct: 1.5
+  reference_rates:               # group currency (EUR) per one unit; synthetic values
+    CHF: 1.0650
+    SEK: 0.0870
+
+chart_of_accounts:
+  "102000": { name: "Bank current account", type: BALANCE_SHEET }
+  "110000": { name: "Trade receivables", type: BALANCE_SHEET, reconciliation_for: AR }
+  "150000": { name: "Intercompany receivables", type: BALANCE_SHEET, intercompany: true }
+  "199999": { name: "Suspense and clearing", type: BALANCE_SHEET, suspense: true }
+  "200000": { name: "Trade payables", type: BALANCE_SHEET, reconciliation_for: AP }
+  "250000": { name: "Intercompany payables", type: BALANCE_SHEET, intercompany: true }
+  "290000": { name: "Accrued liabilities", type: BALANCE_SHEET }
+  "400000": { name: "Service revenue", type: PROFIT_AND_LOSS }
+  "410000": { name: "Intercompany service revenue", type: PROFIT_AND_LOSS }
+  "610000": { name: "IT and cloud services", type: PROFIT_AND_LOSS, requires_cost_centre: true }
+  "620000": { name: "Professional and recharged services", type: PROFIT_AND_LOSS, requires_cost_centre: true }
+  "630000": { name: "Travel and accommodation", type: PROFIT_AND_LOSS, requires_cost_centre: true }
+  "640000": { name: "Office and facilities", type: PROFIT_AND_LOSS, requires_cost_centre: true }
+
+cost_centres:
+  CH10: [CC-CH-1100, CC-CH-1200, CC-CH-2100]
+  SE10: [CC-SE-3100, CC-SE-3200]
+  LV10: [CC-LV-5100, CC-LV-5200]
+
+sod:
+  approval_required_sources: [GL, IC]
+  toxic_role_pairs:
+    - id: P2P-01
+      roles: [VENDOR_MASTER_MAINTAIN, AP_PAYMENT_RELEASE]
+      severity: BLOCKER
+      risk: "can create a vendor and release payment to it"
+    - id: R2R-01
+      roles: [GL_JOURNAL_POST, GL_JOURNAL_APPROVE]
+      severity: BLOCKER
+      risk: "can post and approve manual journals without independent review"
+    - id: O2C-01
+      roles: [AR_CREDIT_NOTE_ISSUE, AR_CASH_APPLICATION]
+      severity: WARNING
+      risk: "can conceal misapplied receipts through credit notes"
+
+four_eyes:
+  submitter_role: PRECLOSE_PREPARER
+  approver_role: PRECLOSE_CHECKER
+  roles_incompatible_with_approval: [PRECLOSE_PREPARER, GL_JOURNAL_POST]
+  min_justification_length: 20
+  demo_maker: U20117
+  demo_checker: U30452
+
+# Snapshot of the identity and access system for the close workflow (synthetic users).
+access_directory:
+  U20117: [PRECLOSE_PREPARER, GL_JOURNAL_POST]
+  U20188: [PRECLOSE_PREPARER]
+  U30452: [PRECLOSE_CHECKER]
+  U30477: [PRECLOSE_CHECKER, GL_JOURNAL_POST]
+  U40901: [AUDIT_READ_ONLY]
